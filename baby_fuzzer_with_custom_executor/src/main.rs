@@ -54,6 +54,7 @@ where
                if buff.len() > 2 && buff[2] == b'T' {
                     mark_map(3);
                    if buff.len() > 3 && buff[3] == b'T' {
+                       println!("[LOG]: {}", String::from_utf8_lossy(buff));
                         return Ok(ExitKind::Crash)
                     }
                 }
@@ -116,7 +117,7 @@ fn main() {
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
     #[cfg(feature = "bloom_input_filter")]
-    let mut fuzzer = StdFuzzer::with_bloom_input_filter(&mut scheduler, &mut feedback, &mut objective, 1_000_000, 0.001);
+    let mut fuzzer = StdFuzzer::with_bloom_input_filter(scheduler, feedback, objective, 1_000_000, 0.001);
     
     let executor = CustomExecutor::new(&state);
     let mut executor = WithObservers::new(executor, tuple_list!(observer));

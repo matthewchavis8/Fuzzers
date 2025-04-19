@@ -1,0 +1,12 @@
+[package]
+name = "test_Fuzzer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libafl = "0.15.2"
+libafl_bolts = "0.15.2"
+
+[features]
+tui = []
+bloom_input_filter = []
