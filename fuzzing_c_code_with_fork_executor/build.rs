@@ -2,9 +2,6 @@ extern crate cc;
 
 fn main() {
     cc::Build::new()
-        .cpp(true)
-        .file("src/harness.cpp")
+        .file("src/harness.c")
         .compile("harness.a");
-
-
 }
