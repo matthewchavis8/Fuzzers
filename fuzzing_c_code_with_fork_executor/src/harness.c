@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
@@ -44,7 +45,6 @@ int create_shmem_array() {
  *
  *  @return - returns 0 if it was successful in setting byte to 1
  */ 
-
 int set_shmem_map(uint8_t idx) {
   
   // Attaching to our shared memory segment
@@ -100,16 +100,17 @@ void c_harness(uint8_t* arr) {
 
   if (arr[0] == 'a') {
     set_shmem_map(1);
-    if (arr[0] == 'b') {
+    if (arr[1] == 'b') {
       set_shmem_map(2);
-      if (arr[0] == 'c') {
-        set_shmem_map(3);
+      if (arr[2] == 'c') {
+        // set_shmem_map(3);
         abort();
       }
     }
   }
 }
 
+// Gets Ptr to Shared Memory Segment
 uint8_t* get_ptr() {
   void* res = shmat(shmid, NULL, 0);
 
