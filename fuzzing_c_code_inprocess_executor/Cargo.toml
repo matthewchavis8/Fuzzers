@@ -1,0 +1,14 @@
+[package]
+name = "fuzzing_c_code_inprocess_executor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libafl = "0.15.2"
+libafl_bolts = "0.15.2"
+
+[build-dependencies]
+cc = "1.1.21"
+
+[features]
+tui = []
