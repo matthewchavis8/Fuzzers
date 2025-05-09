@@ -1,0 +1,90 @@
+
+# Global variables
+FUZZER_NAME := "QemuBaremetal"
+TARGET_DIR  := "target/QemuBaremetal"
+BUILD_DIR   := "{{TARGET_DIR}/build}"
+PROFILE     := "dev"
+
+# Paths to QEMU Virtual Hardware for the kernel and the virtual disk
+KERNEL    := "{{TARGET_DIR}/kernel.elf}"
+DUMMY_IMG := "{{TARGET_DIR}/virtualDisk.qcow2}"
+
+# Output Director
+target_dir:
+  @echo "[LOG] Creating ${TARGET_DIR}"
+  mkdir -p {{TARGET_DIR}}
+
+# Creating a dummy virtual disk Image (32 MB)
+image: target_dir
+  @echo "[LOG] Creating the Virtual Disk"
+  qemu-img create -f qcow2 {{DUMMY_IMG}} 32M
+
+# Compiles the ARM kernel
+target flavor="breakpoint": image 
+  @echo "[LOG] Compiling kernel.elf for flavor={{flavor}}"
+  arm-none-eabi-gcc -ggdb -ffreestanding -nostartfiles -lgcc \
+    -T example/mps2_m3.ld                                    \
+    -mcpu=cortex-m3                                          \
+    -D "TARGET_{{uppercase(flavor)}}"                        \
+    -I example/include                                       \
+    example/main.c example/startup.c                         \
+    -o {{KERNEL}}
+
+# Building the Fuzzer binary
+build flavor="breakpoint": target_dir
+  @echo "[LOG] Building Fuzzer (profile=${PROFILE}, flavor={{flavor}})"
+  cargo build                  \
+    --profile {{PROFILE}}      \
+    --no-default-features      \
+    --features std,{{flavor}}  \
+    --target-dir {{BUILD_DIR}} \
+
+# Run the fuzzer binary under QEMU
+run flavor="breakpoint": target flavor={{flavor}} build flavor={{flavor}}
+  @echo "[LOG] Running the Fuzzer binary under QEMU"
+  {{BUILD_DIR}}/{{PROFILE}}/{{FUZZER_NAME}}        \
+    -icount shift=auto,align=off,sleep=off         \
+    -machine mps2-an385                            \
+    -monitor null                                  \
+    -kernel {{KERNEL}}                             \
+    -drive if=none,format=qcow2,file={{DUMMY_IMG}} \
+    -serial null                                   \
+    -nographic                                     \
+    -snapshot                                      \
+    -S
+
+# Quick smoke test for one flavor
+test_flavor flavor="breakpoint": target flavor={{flavor}} build flavor={{flavor}}
+    @echo "[LOG] Testing flavor={{flavor}}"
+    TMP=$(mktemp -d) &&                                     \
+    timeout 20s {{BUILD_DIR}}/{{PROFILE}}/{{FUZZER_NAME}}   \
+      -icount shift=auto,align=off,sleep=off                \
+      -machine mps2-an385                                   \
+      -monitor null                                         \
+      -kernel {{KERNEL}}                                    \
+      -drive if=none,format=qcow2,file={{DUMMY_IMG}}        \
+      -serial null                                          \
+      -nographic                                            \
+      -snapshot                                             \
+      -S                                                    \
+      | tee $$TMP/fuzz.log 2>&1 || true;                    \
+    if grep -q Objective $$TMP/fuzz.log; then               \
+      echo "✅ flavor={{flavor}} FOUND objective";          \
+    else                                                    \
+      echo "❌ flavor={{flavor}} MISSED objective"; exit 1; \
+    fi
+
+# Run test for all flavors
+test:                             \
+  test_flavor flavor="low_level"  \
+  test_flavor flavor="breakpoint" \
+  test_flavor flavor="sync_exit"  \
+
+clean:
+  @echo "[LOG] Cleaning Cargo Build"
+  cargo clean
+
+# run: 
+#   cargo run 
+# clean:
+#   cargo clean

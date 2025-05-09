@@ -1,0 +1,23 @@
+[package]
+name = "fuzzing_baremetal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libafl = "0.15.2"
+libafl_bolts = "0.15.2"
+libafl_qemu = { version = "0.15.2", features = ["arm", "systemmode"], default-features = false }
+libafl_qemu_build = "0.15.2"
+libafl_targets = "0.15.2"
+
+[features]
+default = []
+arm = ["libafl_qemu/arm"]
+systemmode = ["libafl_qemu/systemmode"]
+
+[profile.dev]
+opt-level = 0
+debug = true
+codegen-units = 7
+incremental = true
+overflow-checks = true
