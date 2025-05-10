@@ -1,7 +1,5 @@
-
+use libafl_qemu_build::build_libafl_qemu;
 
 fn main() {
-
-    println!("This was able to pass")
-    
+    build_libafl_qemu();
 }
