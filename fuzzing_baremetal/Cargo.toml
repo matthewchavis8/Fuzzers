@@ -10,7 +10,8 @@ libafl_qemu = { version = "0.15.2", features = ["arm", "systemmode"], default-fe
 libafl_targets = "0.15.2"
 
 [features]
-default = []
+default = ["std", "low_level"]
+std = []
 arm = ["libafl_qemu/arm"]
 systemmode = ["libafl_qemu/systemmode"]
 

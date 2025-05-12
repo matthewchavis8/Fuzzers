@@ -2,25 +2,25 @@
 # Global variables
 FUZZER_NAME := "QemuBaremetal"
 TARGET_DIR  := "target/QemuBaremetal"
-BUILD_DIR   := "{{TARGET_DIR}/build}"
+BUILD_DIR   :=  TARGET_DIR + "/build"
 PROFILE     := "dev"
 
 # Paths to QEMU Virtual Hardware for the kernel and the virtual disk
-KERNEL    := "{{TARGET_DIR}/kernel.elf}"
-DUMMY_IMG := "{{TARGET_DIR}/virtualDisk.qcow2}"
+KERNEL    := TARGET_DIR + "/kernel.elf"
+DUMMY_IMG := TARGET_DIR + "/virtualDisk.qcow2"
 
 # Output Director
 target_dir:
-  @echo "[LOG] Creating ${TARGET_DIR}"
+  @echo "[LOG] Creating the directory: {{TARGET_DIR}}"
   mkdir -p {{TARGET_DIR}}
 
 # Creating a dummy virtual disk Image (32 MB)
 image: target_dir
-  @echo "[LOG] Creating the Virtual Disk"
+  @echo "[LOG] Creating the Virtual Disk: {{DUMMY_IMG}}"
   qemu-img create -f qcow2 {{DUMMY_IMG}} 32M
 
 # Compiles the ARM kernel
-target flavor: image target_dir 
+target flavor: image
   @echo "[LOG] Compiling kernel.elf for flavor={{flavor}}"
   arm-none-eabi-gcc -ggdb -ffreestanding -nostartfiles -lgcc \
     -T example/mps2_m3.ld                                    \
@@ -32,7 +32,7 @@ target flavor: image target_dir
 
 # Building the Fuzzer binary
 build flavor="breakpoint": target_dir
-  @echo "[LOG] Building Fuzzer (profile=${PROFILE}, flavor={{flavor}})"
+  @echo "[LOG] Building Fuzzer (profile={{PROFILE}}, flavor={{flavor}})"
   cargo build                  \
     --profile {{PROFILE}}      \
     --no-default-features      \

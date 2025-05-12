@@ -3,7 +3,8 @@
  * Bare-metal ARM Cortex-M startup file
  *
  *
- * /
+ */
+
 typedef unsigned int uint32_t;
 
 extern int main();
