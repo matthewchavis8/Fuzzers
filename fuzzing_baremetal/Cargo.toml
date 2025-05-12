@@ -14,6 +14,10 @@ default = []
 arm = ["libafl_qemu/arm"]
 systemmode = ["libafl_qemu/systemmode"]
 
+low_level  = []  # The low level way to interact with libafl qemu with direct calls to QEMU functions
+breakpoint = []  # Uses the command system with breakpoints
+sync_exit  = []  # Uses the command system. with sync exit
+
 [profile.dev]
 opt-level = 0
 debug = true

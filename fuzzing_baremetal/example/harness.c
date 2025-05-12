@@ -52,9 +52,9 @@ int LLVMFuzzerTestOneInput(uint32_t* data, uint32_t size) {
   #ifdef TARGET_SYNC_EXIT
     // Stops QEMU fuzzer coverage
     libafl_qemu_end(LIBAFL_QEMU_END_OK);
-    // force a timeout
   #else 
-      return BREAKPOINT();
+    // force a timeout
+    return BREAKPOINT();
   #endif /* ifdef TARGET_SYNC_EXIT */
   
   return 1;
