@@ -42,9 +42,8 @@ build flavor="breakpoint": target_dir
 
 # Run the fuzzer binary under QEMU
 run flavor="breakpoint": (target flavor) (build flavor)
-  @echo "[LOG] Path to: Binary: {{BINARY_DIR}}"
   @echo "[LOG] Running the Fuzzer binary under QEMU"
-  {{BINARY_DIR}}/{{FUZZER_NAME}}        \
+  {{BINARY_DIR}}/{{FUZZER_NAME}}                   \
     -icount shift=auto,align=off,sleep=off         \
     -machine mps2-an385                            \
     -monitor null                                  \
