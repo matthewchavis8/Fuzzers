@@ -6,7 +6,12 @@
  *  Harness
  *
  */
-typedef unsigned int uint32_t;
+// #include <stdint.h>
+
+// Added extra t because of header issues with one of the 
+// include file has its own implementation of uint32_t
+// leading to a lot of issues so resolved by altering name for now
+typedef unsigned int my_uint32_t;
 
 #ifdef TARGET_SYNC_EXIT
   #include "libafl_qemu.h"
@@ -25,7 +30,7 @@ int __attribute__((noinline)) BREAKPOINT() {
  *     - Crashes
  *     - Timeouts
  */
-int LLVMFuzzerTestOneInput(uint32_t* data, uint32_t size) {
+int LLVMFuzzerTestOneInput(my_uint32_t* data, my_uint32_t size) {
   #ifdef TARGET_SYNC_EXIT
   // Tells QEMU fuzzer to start collecting coverage from address Data with length Size
    libafl_qemu_start_phys((void*)data, size);
@@ -60,7 +65,7 @@ int LLVMFuzzerTestOneInput(uint32_t* data, uint32_t size) {
   return 1;
 }
 
-uint32_t FUZZ_INPUT[] = {
+my_uint32_t FUZZ_INPUT[] = {
   101, 201, 700, 230, 860, 234, 980, 200, 340, 678, 230, 134, 900,
   236, 900, 123, 800, 123, 658, 607, 246, 804, 567, 568, 207, 407,
   246, 678, 457, 892, 834, 456, 878, 246, 699, 854, 234, 844, 290,

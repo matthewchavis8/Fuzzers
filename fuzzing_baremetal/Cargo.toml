@@ -4,13 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+env_logger = "0.11.8"
 libafl = "0.15.2"
 libafl_bolts = "0.15.2"
 libafl_qemu = { version = "0.15.2", features = ["arm", "systemmode"], default-features = false }
 libafl_targets = "0.15.2"
 
 [features]
-default = ["std", "low_level"]
+default = ["std", "breakpoint"]
 std = []
 arm = ["libafl_qemu/arm"]
 systemmode = ["libafl_qemu/systemmode"]
