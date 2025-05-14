@@ -1,13 +1,13 @@
 #![allow(unused_variables)]
-use std::{env, num::NonZero, path::PathBuf, process, time::Duration};
+use std::{env, num::NonZero, path::PathBuf, time::Duration};
 use libafl::{
-        corpus::{Corpus, InMemoryCorpus, OnDiskCorpus}, 
+        corpus::{InMemoryCorpus, OnDiskCorpus}, 
         events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
         feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, 
         inputs::BytesInput, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
         observers::{CanTrack, HitcountsMapObserver, TimeObserver, VariableMapObserver}, 
         schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, 
-        state::{HasCorpus, StdState}, Error, Fuzzer, StdFuzzer};
+        state::StdState, Error, Fuzzer, StdFuzzer};
 
 use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
                 shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
@@ -202,7 +202,7 @@ pub fn fuzz() {
             state.generate_initial_inputs(&mut fuzzer, &mut executor, &mut generator, &mut mgr, test_cases)
                     .expect("Failed to load empty corpus with intial input");
 
-            println!("[LOG] Loaded {test_cases} into corpus");
+            println!("[LOG] Loaded {test_cases} testcases into corpus");
         }
 
         fuzzer
