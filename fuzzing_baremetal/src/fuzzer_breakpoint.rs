@@ -74,7 +74,7 @@ pub fn fuzz() {
      *
      * @param state              - if restarting a worker it carries over else fresh start
      * @param mgr                - event manager built with multimonitor to handle reporting with the broker
-     * @param client_description -
+     * @param client_description - meta data that must be linked
      * */
     let mut run_client = |state: Option<_>, mut mgr, _client_description| {
         let args: Vec<String> = env::args().collect();
