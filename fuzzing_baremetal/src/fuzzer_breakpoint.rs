@@ -1,11 +1,11 @@
 #![allow(unused_variables)]
 // A fuzzer using qemu in systemmode for binary only coverage of kernels
 
-use std::{env, path::PathBuf, time::Duration};
+use std::{env, path::PathBuf, process, time::Duration};
 
-use libafl::{executors::ExitKind, feedback_or, feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, inputs::BytesInput, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}};
-use libafl_bolts::{core_affinity::Cores, ownedref::OwnedMutSlice};
-use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, GuestReg, QemuMemoryChunk};
+use libafl::{corpus::{Corpus, InMemoryCorpus, InMemoryOnDiskCorpus}, executors::ExitKind, feedback_or, feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, inputs::BytesInput, mutators::{havoc_mutations, StdScheduledMutator}, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}, schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, state::{HasCorpus, StdState}, Fuzzer, StdFuzzer};
+use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, tuples::tuple_list};
+use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, GuestReg, QemuExecutor, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
@@ -83,8 +83,8 @@ pub fn fuzz() {
             emulator: &mut Emulator<_,_,_,_,_,_,_,>,
             state: &mut _,
             input: &BytesInput| unsafe {
-            emulator.run(state, input).expect("Failed to execute QEMU");
-        };
+                emulator.run(state, input).unwrap().try_into().unwrap()
+            };
         
         // Created an observeration channel to watch code coverage
         let mut edges_observer = unsafe {
@@ -152,6 +152,63 @@ pub fn fuzz() {
             TimeoutFeedback::new()
         );
 
+        // If not restarting state, create a state from scratch
+        let mut state = state.unwrap_or_else(|| {
+            StdState::new(
+                StdRand::with_seed(current_nanos()), 
+                InMemoryCorpus::new(), 
+                InMemoryOnDiskCorpus::new(&crash_dir).unwrap(), 
+                &mut feedback, 
+                &mut objective
+            )
+            .expect("Failed to create state")
+        });
+
+        // A minimization + queue policy to grab testcases from the corpus
+        let scheduler =
+            IndexesLenTimeMinimizerScheduler::new(&edges_observer, QueueScheduler::new());
+
+        let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
+
+        // Creating a mutational stage and a calibration stage
+        let mutator = StdScheduledMutator::new(havoc_mutations());
+        let calibration_feedback = MaxMapFeedback::new(&edges_observer);
+
+        let mut stages = tuple_list!(
+            StdMutationalStage::new(mutator),
+            CalibrationStage::new(&calibration_feedback)
+        );
+
+        // Intializing the QEMU in-process executor
+        let mut executor = QemuExecutor::new(
+            emu, 
+            &mut harness, 
+            tuple_list!(edges_observer, time_observer), 
+            &mut fuzzer, 
+            &mut state, 
+            &mut mgr, 
+            timeout
+        )
+        .expect("Failed to start QEMU executor");
+        
+        // trigger a breakpoint
+        executor.break_on_timeout();
+
+        if state.must_load_initial_inputs() {
+            state
+                .load_initial_inputs(&mut fuzzer, &mut executor, &mut mgr, &corpus_dir)
+                .unwrap_or_else(|_| {
+                    println!("Failed to load intial corpus at  {:?}", &corpus_dir);
+                    process::exit(0);
+                });
+            println!("Imported {} inputs from disk.", state.corpus().count());
+        }
+
+        fuzzer
+            .fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)
+            .unwrap();
+
+        Ok(())
     };
 
     println!("Successfully BUILT");
