@@ -3,9 +3,9 @@
 
 use std::{env, path::PathBuf, time::Duration};
 
-use libafl::{inputs::BytesInput, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}};
+use libafl::{executors::ExitKind, inputs::BytesInput, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}};
 use libafl_bolts::{core_affinity::Cores, ownedref::OwnedMutSlice};
-use libafl_qemu::{breakpoint::Breakpoint, command::StartCommand, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, QemuMemoryChunk};
+use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, GuestReg, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
@@ -83,7 +83,7 @@ pub fn fuzz() {
             emulator: &mut Emulator<_,_,_,_,_,_,_,>,
             state: &mut _,
             input: &BytesInput| unsafe {
-            emulator.run(state, input).unwrap().try_into().unwrap()
+            emulator.run(state, input).expect("Failed to execute QEMU");
         };
         
         // Created an observeration channel to watch code coverage
@@ -110,18 +110,28 @@ pub fn fuzz() {
             .build()
             .expect("Failed to call QEMU emulator");
 
-        // Set the Start Point for QEMU
+        // Set the start point for QEMU
         emu.add_breakpoint(
             Breakpoint::with_command(
                 main_addr, 
                 StartCommand::new(QemuMemoryChunk::phys(
                         input_addr, 
-                        unsafe { MAX_INPUT_SIZE } as GuestAddr, 
+                        unsafe { MAX_INPUT_SIZE } as GuestReg, 
                         None,
                 ))
                 .into(),
                 true
             ),
+            true
+        );
+        
+        // Set the end point for QEMU
+        emu.add_breakpoint(
+            Breakpoint::with_command(
+                breakpoint_addr, 
+                EndCommand::new(Some(ExitKind::Ok)).into(), 
+                false
+            ), 
             true
         );
 
