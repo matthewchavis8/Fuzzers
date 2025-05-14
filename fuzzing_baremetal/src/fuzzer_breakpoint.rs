@@ -196,22 +196,13 @@ pub fn fuzz() {
         // trigger a breakpoint
         executor.break_on_timeout();
         
-        // If the corpus is empty intially with no testcases we populate it with 8 starter cases
-        if state.corpus().is_empty() {
-            let mut generator = RandPrintablesGenerator::new(NonZero::new(32).unwrap());
-
-            state.generate_initial_inputs(&mut fuzzer, &mut executor, &mut generator, &mut mgr, 8).unwrap();
-
-        }
-
         if state.must_load_initial_inputs() {
-            state
-                .load_initial_inputs(&mut fuzzer, &mut executor, &mut mgr, &corpus_dir)
-                .unwrap_or_else(|_| {
-                    println!("Failed to load intial corpus at  {:?}", &corpus_dir);
-                    process::abort();
-                });
-            println!("Imported {} inputs from disk.", state.corpus().count());
+            let mut generator = RandPrintablesGenerator::new(NonZero::new(32).unwrap());
+            let test_cases = 8;
+            state.generate_initial_inputs(&mut fuzzer, &mut executor, &mut generator, &mut mgr, test_cases)
+                    .expect("Failed to load empty corpus with intial input");
+
+            println!("[LOG] Loaded {test_cases} into corpus");
         }
 
         fuzzer
