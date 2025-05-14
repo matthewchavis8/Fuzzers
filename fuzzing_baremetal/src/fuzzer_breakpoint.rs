@@ -1,10 +1,10 @@
 #![allow(unused_variables)]
 // A fuzzer using qemu in systemmode for binary only coverage of kernels
 
-use std::{env, path::PathBuf, process, time::Duration};
+use std::{env, num::NonZero, path::PathBuf, process, time::Duration};
 
-use libafl::{corpus::{Corpus, InMemoryCorpus, InMemoryOnDiskCorpus}, executors::ExitKind, feedback_or, feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, inputs::BytesInput, mutators::{havoc_mutations, StdScheduledMutator}, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}, schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, state::{HasCorpus, StdState}, Fuzzer, StdFuzzer};
-use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, tuples::tuple_list};
+use libafl::{corpus::{Corpus, InMemoryCorpus, InMemoryOnDiskCorpus, OnDiskCorpus}, events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, inputs::BytesInput, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}, schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, state::{HasCorpus, StdState}, Error, Fuzzer, StdFuzzer};
+use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
 use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, GuestReg, QemuExecutor, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
@@ -104,6 +104,7 @@ pub fn fuzz() {
             .qemu_parameters(args)
             .prepend_module(
                 StdEdgeCoverageModule::builder()
+                .map_observer(edges_observer.as_mut())
                 .build()
                 .expect("Failed to intialize coverage map in QEMU"),
             )
@@ -157,7 +158,7 @@ pub fn fuzz() {
             StdState::new(
                 StdRand::with_seed(current_nanos()), 
                 InMemoryCorpus::new(), 
-                InMemoryOnDiskCorpus::new(&crash_dir).unwrap(), 
+                OnDiskCorpus::new(&crash_dir).unwrap(), 
                 &mut feedback, 
                 &mut objective
             )
@@ -193,13 +194,21 @@ pub fn fuzz() {
         
         // trigger a breakpoint
         executor.break_on_timeout();
+        
+        // If the corpus is empty intially with no testcases we populate it with 8 starter cases
+        if state.corpus().is_empty() {
+            let mut generator = RandPrintablesGenerator::new(NonZero::new(32).unwrap());
+
+            state.generate_initial_inputs(&mut fuzzer, &mut executor, &mut generator, &mut mgr, 8).unwrap();
+
+        }
 
         if state.must_load_initial_inputs() {
             state
                 .load_initial_inputs(&mut fuzzer, &mut executor, &mut mgr, &corpus_dir)
                 .unwrap_or_else(|_| {
                     println!("Failed to load intial corpus at  {:?}", &corpus_dir);
-                    process::exit(0);
+                    process::abort();
                 });
             println!("Imported {} inputs from disk.", state.corpus().count());
         }
@@ -210,6 +219,35 @@ pub fn fuzz() {
 
         Ok(())
     };
+
+    // Shared Memory allocator so processes can communicate with eachother
+    let shmem_provider = StdShMemProvider::new().expect("Failed to init shared memory");
+
+    // Stats reporter for the broker
+    #[cfg(not(feature = "tui"))]
+    let monitor = MultiMonitor::new(|msg| println!("[LOG] {msg}"));
+    
+    #[cfg(feature = "tui")]
+    let monitor = TuiMonitor::builder()
+        .enhanced_graphics(true)
+        .title("Fuzzing Baremetal ARM")
+        .build();
+
+    // Build and run launcher
+    match Launcher::builder()
+        .shmem_provider(shmem_provider)
+        .broker_port(broker_port)
+        .configuration(EventConfig::from_build_id())
+        .monitor(monitor)
+        .run_client(&mut run_client)
+        .cores(&cores)
+        .build()
+        .launch()
+        {
+            Ok(()) => (),
+            Err(Error::ShuttingDown) => println!("User stopped fuzzing process"),
+            Err(e) => panic!("Failed to run launcher: {e:?}"),
+        }
 
     println!("Successfully BUILT");
 }

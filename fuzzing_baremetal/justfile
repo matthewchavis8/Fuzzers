@@ -32,16 +32,16 @@ target flavor: image
     -o {{KERNEL}}
 
 # Building the Fuzzer binary
-build flavor="breakpoint": target_dir
-  @echo "[LOG] Building Fuzzer (profile={{PROFILE}}, flavor={{flavor}})"
-  cargo build                  \
-    --profile {{PROFILE}}      \
-    --no-default-features      \
-    --features std,{{flavor}}  \
-    --target-dir {{BUILD_DIR}} \
+build flavor="breakpoint" ui="standard": target_dir
+  @echo "[LOG] Building Fuzzer (profile={{PROFILE}}, flavor={{flavor}}, ui={{ui}})"
+  cargo build                                                             \
+    --profile {{PROFILE}}                                                 \
+    --no-default-features                                                 \
+    --features std,{{flavor}}{{ if ui == "tui" { ",tui" } else { "" } }}  \
+    --target-dir {{BUILD_DIR}}                                            \
 
 # Run the fuzzer binary under QEMU
-run flavor="breakpoint": (target flavor) (build flavor)
+run flavor="breakpoint" ui="standard": (target flavor) (build flavor ui)
   @echo "[LOG] Running the Fuzzer binary under QEMU"
   KERNEL={{KERNEL}}                                \
   {{BINARY_DIR}}/{{FUZZER_NAME}}                   \

@@ -15,7 +15,7 @@ default = ["std", "breakpoint"]
 std = []
 arm = ["libafl_qemu/arm"]
 systemmode = ["libafl_qemu/systemmode"]
-
+tui = []
 low_level  = []  # The low level way to interact with libafl qemu with direct calls to QEMU functions
 breakpoint = []  # Uses the command system with breakpoints
 sync_exit  = []  # Uses the command system. with sync exit
