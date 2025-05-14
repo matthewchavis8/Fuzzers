@@ -1,22 +1,23 @@
 #![allow(unused_variables)]
-// A fuzzer using qemu in systemmode for binary only coverage of kernels
-
 use std::{env, num::NonZero, path::PathBuf, process, time::Duration};
+use libafl::{
+        corpus::{Corpus, InMemoryCorpus, OnDiskCorpus}, 
+        events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
+        feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, 
+        inputs::BytesInput, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
+        observers::{CanTrack, HitcountsMapObserver, TimeObserver, VariableMapObserver}, 
+        schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, 
+        state::{HasCorpus, StdState}, Error, Fuzzer, StdFuzzer};
 
-use libafl::{corpus::{Corpus, InMemoryCorpus, InMemoryOnDiskCorpus, OnDiskCorpus}, events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, inputs::BytesInput, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}, schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, state::{HasCorpus, StdState}, Error, Fuzzer, StdFuzzer};
-use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
-use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, GuestReg, QemuExecutor, QemuMemoryChunk};
+use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
+                shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
+use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, 
+                  elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
 pub fn fuzz() {
-    env_logger::init();
-
-    // if let Ok(s) = env::var("FUZZ_SIZE") {
-    //     str::parse::<usize>(&s).expect("FUZZ_SIZE was not a number");
-    // }
-    
     /*
      * Hard coded Parameters
      *

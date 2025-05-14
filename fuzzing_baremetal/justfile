@@ -1,4 +1,3 @@
-
 # Global variables
 FUZZER_NAME := "fuzzing_baremetal"
 TARGET_DIR  := "target/QemuBaremetal"
@@ -82,8 +81,3 @@ test: (test_flavor "low_level") (test_flavor "breakpoint") (test_flavor "sync_ex
 clean:
   @echo "[LOG] Cleaning Cargo Build"
   cargo clean
-
-# run: 
-#   cargo run 
-# clean:
-#   cargo clean
