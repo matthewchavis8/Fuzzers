@@ -5,7 +5,7 @@ use std::{env, path::PathBuf, time::Duration};
 
 use libafl::{inputs::BytesInput, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}};
 use libafl_bolts::{core_affinity::Cores, ownedref::OwnedMutSlice};
-use libafl_qemu::{elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr};
+use libafl_qemu::{breakpoint::Breakpoint, command::StartCommand, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
@@ -46,7 +46,7 @@ pub fn fuzz() {
             &env::var("FUZZ_INPUT").unwrap_or_else(|_| "FUZZ_INPUT".to_owned()), 
             0
         )
-        .expect("env FUZZ_INPUT not found or having trouble finding the input buffer in binary") as GuestAddr;
+        .expect("env FUZZ_INPUT not found or having trouble finding the input buffer in binary") as GuestPhysAddr;
     println!("input address: {:#X}", input_addr);
 
     // Memory Address to the main function in our harness where coverage begins
@@ -109,6 +109,21 @@ pub fn fuzz() {
             )
             .build()
             .expect("Failed to call QEMU emulator");
+
+        // Set the Start Point for QEMU
+        emu.add_breakpoint(
+            Breakpoint::with_command(
+                main_addr, 
+                StartCommand::new(QemuMemoryChunk::phys(
+                        input_addr, 
+                        unsafe { MAX_INPUT_SIZE } as GuestAddr, 
+                        None,
+                ))
+                .into(),
+                true
+            ),
+            true
+        );
 
     };
 
