@@ -6,7 +6,6 @@
  *  Harness
  *
  */
-// #include <stdint.h>
 
 // Added extra t because of header issues with one of the 
 // include file has its own implementation of uint32_t
