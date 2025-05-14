@@ -3,7 +3,7 @@
 
 use std::{env, path::PathBuf, time::Duration};
 
-use libafl::{executors::ExitKind, inputs::BytesInput, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}};
+use libafl::{executors::ExitKind, feedback_or, feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, inputs::BytesInput, observers::{CanTrack, HitcountsMapObserver, TimeObserver, VarLenMapObserver, VariableMapObserver}};
 use libafl_bolts::{core_affinity::Cores, ownedref::OwnedMutSlice};
 use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestAddr, GuestPhysAddr, GuestReg, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
@@ -133,6 +133,23 @@ pub fn fuzz() {
                 false
             ), 
             true
+        );
+
+        let devices = emu.list_devices();
+        println!("Devices: {:?}", devices);
+
+        // Feedback to rate the interestingness of an input
+        // Can eitheir be a timeout or a new coverage
+        let mut feedback = feedback_or!(
+            MaxMapFeedback::new(&edges_observer),
+            TimeFeedback::new(&time_observer), 
+        );
+
+        // Objective to rate what is a solution
+        // A solution can eitheir be a timout or a crash
+        let mut objective = feedback_or!(
+            CrashFeedback::new(),
+            TimeoutFeedback::new()
         );
 
     };
