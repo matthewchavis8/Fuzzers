@@ -139,7 +139,7 @@ pub fn fuzz() {
         println!("Devices: {:?}", devices);
 
         // Feedback to rate the interestingness of an input
-        // Can eitheir be a timeout or a new coverage
+        // Can eitheir be a slower executions or a new coverage
         let mut feedback = feedback_or!(
             MaxMapFeedback::new(&edges_observer),
             TimeFeedback::new(&time_observer), 
