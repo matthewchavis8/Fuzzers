@@ -81,19 +81,6 @@ pub fn fuzz() {
         let virtual_disk_dir = env::var("DUMMY_IMG").expect("Dummy_image not set");
 
         
-        // Created an observeration channel to watch code coverage
-        let mut edges_observer = unsafe {
-            HitcountsMapObserver::new(VariableMapObserver::from_mut_slice(
-                    "edges", 
-                    OwnedMutSlice::from_raw_parts_mut(edges_map_mut_ptr(), EDGES_MAP_DEFAULT_SIZE), 
-                    &raw mut MAX_EDGES_FOUND,
-            ))
-            .track_indices()
-        };
-        
-        // Created an observation channel to keep track of execution time
-        let time_observer = TimeObserver::new("Time");
-        
         // Qemu config file
         let qemu_config = QemuConfig::builder()
             .machine("mps2-an385")
@@ -153,6 +140,20 @@ pub fn fuzz() {
             input: &BytesInput| unsafe {
                 emulator.run(state, input).unwrap().try_into().unwrap()
             };
+        
+        // Created an observeration channel to watch code coverage
+        let mut edges_observer = unsafe {
+            HitcountsMapObserver::new(VariableMapObserver::from_mut_slice(
+                    "edges", 
+                    OwnedMutSlice::from_raw_parts_mut(edges_map_mut_ptr(), EDGES_MAP_DEFAULT_SIZE), 
+                    &raw mut MAX_EDGES_FOUND,
+            ))
+            .track_indices()
+        };
+        
+        // Created an observation channel to keep track of execution time
+        let time_observer = TimeObserver::new("Time");
+        
 
         // Feedback to rate the interestingness of an input
         // Can eitheir be a slower executions or a new coverage
