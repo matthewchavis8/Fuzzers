@@ -78,6 +78,8 @@ pub fn fuzz() {
     let mut run_client = |state: Option<_>, mut mgr, _client_description| {
         let args: Vec<String> = env::args().collect();
         let kernel_dir = env::var("KERNEL").expect("Kernel variable was not set");
+        let virtual_disk_dir = env::var("DUMMY_IMG").expect("Dummy_image not set");
+
         // Harness calling the LLVM-style harness
         let mut harness = |
             emulator: &mut Emulator<_,_,_,_,_,_,_,>,
@@ -99,12 +101,20 @@ pub fn fuzz() {
         // Created an observation channel to keep track of execution time
         let time_observer = TimeObserver::new("Time");
 
-        // QEMU configuration
         let qemu_config = QemuConfig::builder()
             .machine("mps2-an385")
             .monitor(config::Monitor::Null)
-            .kernel(format("{}", ),
-
+            .kernel(kernel_dir)
+            .serial(config::Serial::Null)
+            .drives([config::Drive::builder()
+                .interface(config::DriveInterface::None)
+                .format(config::DiskImageFileFormat::Qcow2)
+                .file(virtual_disk_dir)
+                .build()])
+            .no_graphic(true)
+            .snapshot(true)
+            .start_cpu(false)
+            .build();
             
 
         // Initialize QEMU Emulator
