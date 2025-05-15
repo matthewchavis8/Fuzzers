@@ -43,6 +43,7 @@ build flavor="breakpoint" ui="standard": target_dir
 run flavor="breakpoint" ui="standard": (target flavor) (build flavor ui)
   @echo "[LOG] Running the Fuzzer binary under QEMU"
   KERNEL={{KERNEL}}                                \
+  DUMMY_IMG={{DUMMY_IMG}}                          \
   {{BINARY_DIR}}/{{FUZZER_NAME}}                   \
     -icount shift=auto,align=off,sleep=off         \
     -machine mps2-an385                            \

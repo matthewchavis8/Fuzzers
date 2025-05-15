@@ -1,13 +1,13 @@
 #![allow(unused_variables)]
 use std::{env, fmt::format, num::NonZero, path::PathBuf, time::Duration};
 use libafl::{
-        corpus::{InMemoryCorpus, OnDiskCorpus}, 
+        corpus::{Corpus, InMemoryCorpus, OnDiskCorpus}, 
         events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
         feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, 
         inputs::{BytesInput, HasTargetBytes}, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
         observers::{CanTrack, HitcountsMapObserver, TimeObserver, VariableMapObserver}, 
         schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, 
-        state::StdState, Error, Fuzzer, StdFuzzer};
+        state::{HasCorpus, StdState}, Error, Fuzzer, StdFuzzer};
 
 use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
                 shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list, AsSlice};
@@ -79,7 +79,9 @@ pub fn fuzz() {
         let args: Vec<String> = env::args().collect();
         let kernel_dir = env::var("KERNEL").expect("Kernel variable was not set");
         let virtual_disk_dir = env::var("DUMMY_IMG").expect("Dummy_image not set");
-
+        
+        println!("[LOG] KERNEL_DIR: {}", kernel_dir);
+        println!("[LOG] VIRTUAL_DISK_DIR: {}", virtual_disk_dir);
         
         // Qemu config file
         let qemu_config = QemuConfig::builder()
@@ -260,12 +262,14 @@ pub fn fuzz() {
         if state.must_load_initial_inputs() {
             let mut generator = RandPrintablesGenerator::new(NonZero::new(32).unwrap());
             let test_cases = 8;
-            state.generate_initial_inputs(&mut fuzzer, &mut executor, &mut generator, &mut mgr, test_cases)
+            state.generate_initial_inputs_forced(&mut fuzzer, &mut executor, &mut generator, &mut mgr, test_cases)
                     .expect("Failed to load empty corpus with intial input");
 
+            println!("[LOG] Corpus Size after generation: {}", state.corpus().count());
             println!("[LOG] Loaded {test_cases} testcases into corpus");
         }
 
+        println!("[LOG] Corpus Size after generation: {}", state.corpus().count());
         fuzzer
             .fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)
             .unwrap();
@@ -287,6 +291,7 @@ pub fn fuzz() {
         .build();
 
     // Build and run launcher
+    #[cfg(not(feature = "tui"))]
     match Launcher::builder()
         .shmem_provider(shmem_provider)
         .broker_port(broker_port)
@@ -294,6 +299,25 @@ pub fn fuzz() {
         .monitor(monitor)
         .run_client(&mut run_client)
         .cores(&cores)
+        .build()
+        .launch()
+        {
+            Ok(()) => (),
+            Err(Error::ShuttingDown) => println!("User stopped fuzzing process"),
+            Err(e) => panic!("Failed to run launcher: {e:?}"),
+        }
+
+    // if tui is enabled fuzzer output would cover it so moving it to an external file
+    #[cfg(feature = "tui")]
+    match Launcher::builder()
+        .shmem_provider(shmem_provider)
+        .broker_port(broker_port)
+        .configuration(EventConfig::from_build_id())
+        .monitor(monitor)
+        .run_client(&mut run_client)
+        .cores(&cores)
+        .stdout_file(Some("/dev/null"))
+        .stderr_file(Some("/dev/null"))
         .build()
         .launch()
         {
