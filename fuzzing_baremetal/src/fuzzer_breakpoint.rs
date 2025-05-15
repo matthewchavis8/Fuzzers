@@ -222,7 +222,7 @@ pub fn fuzz() {
     #[cfg(feature = "tui")]
     let monitor = TuiMonitor::builder()
         .enhanced_graphics(true)
-        .title("Fuzzing Baremetal ARM")
+        .title("Fuzzing Baremetal ARM with breakpoints")
         .build();
 
     // Build and run launcher

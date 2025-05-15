@@ -75,7 +75,9 @@ pub fn fuzz() {
             .expect("Failed to call QEMU emulator");
         
         // todo: would like to move these print statments into a LOG file instead hmmmm
+        #[cfg(not(feature = "tui"))]
         let devices = emu.list_devices();
+        #[cfg(not(feature = "tui"))]
         println!("Devices: {:?}", devices);
 
         // Feedback to rate the interestingness of an input
@@ -160,10 +162,11 @@ pub fn fuzz() {
     #[cfg(feature = "tui")]
     let monitor = TuiMonitor::builder()
         .enhanced_graphics(true)
-        .title("Fuzzing Baremetal ARM")
+        .title("Fuzzing Baremetal ARM with sync_exit")
         .build();
 
     // Build and run launcher
+    #[cfg(not(feature = "tui"))]
     match Launcher::builder()
         .shmem_provider(shmem_provider)
         .broker_port(broker_port)
@@ -171,6 +174,25 @@ pub fn fuzz() {
         .monitor(monitor)
         .run_client(&mut run_client)
         .cores(&cores)
+        .build()
+        .launch()
+        {
+            Ok(()) => (),
+            Err(Error::ShuttingDown) => println!("User stopped fuzzing process"),
+            Err(e) => panic!("Failed to run launcher: {e:?}"),
+        }
+    
+    // if tui is enabled fuzzer output would cover it so moving it to an external file
+    #[cfg(feature = "tui")]
+    match Launcher::builder()
+        .shmem_provider(shmem_provider)
+        .broker_port(broker_port)
+        .configuration(EventConfig::from_build_id())
+        .monitor(monitor)
+        .run_client(&mut run_client)
+        .cores(&cores)
+        .stdout_file(Some("/dev/null"))
+        .stderr_file(Some("/dev/null"))
         .build()
         .launch()
         {
