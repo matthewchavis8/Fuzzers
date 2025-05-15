@@ -4,7 +4,7 @@ The goal is to demonstrate how to build effective fuzzers for different environm
 
 ## Fuzzers
 
-Each folder in this repository is a self-contained Rust project (`cargo new`) representing a specific fuzzing scenario:
+Each folder in this repository is a Fuzzer representing a specific fuzzing scenario:
 
 - `baby_fuzzer` – A minimal fuzzer showcasing coverage-guided fuzzing using `InProcessExecutor`, `StdFuzzer`, and basic mutation stages.
 - `baby_fuzzer_with_custom_executor` – A minimal fuzzer showcasing coverage-guided fuzzing using a custom executor and also with a bloom input filter and multiple stages such as calibration stage and AflStats stage.
