@@ -41,33 +41,6 @@ pub fn fuzz() {
     )
     .unwrap();
     
-    // Memory Address to the input buffer where our mutated testcases will get injected into QEMU
-    let input_addr = elf
-        .resolve_symbol(
-            &env::var("FUZZ_INPUT").unwrap_or_else(|_| "FUZZ_INPUT".to_owned()), 
-            0
-        )
-        .expect("env FUZZ_INPUT not found or having trouble finding the input buffer in binary") as GuestPhysAddr;
-    println!("input address: {:#X}", input_addr);
-
-    // Memory Address to the main function in our harness where coverage begins
-    let main_addr = elf
-        .resolve_symbol(
-            &env::var("main").unwrap_or_else(|_| "main".to_owned()), 
-            0
-        )
-        .expect("env Main not set or having trouble finding main function in binary");
-    println!("main address: {:#X}", main_addr);
-
-    // Memory Address to the breakpoint where coverage should end
-    let breakpoint_addr = elf
-        .resolve_symbol(
-            &env::var("BREAKPOINT").unwrap_or_else(|_| "BREAKPOINT".to_owned()), 
-            0
-        )
-        .expect("env BREAKPOINT not set or having trouble finding BREAKPOINT in binary");
-    println!("Break point address: {:#X}", breakpoint_addr);
-    
     /*
      * After broker is set up the qemu launcher will invoke to the client process once
      * Basically each processes main function 
