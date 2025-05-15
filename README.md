@@ -2,7 +2,7 @@
 
 The goal is to demonstrate how to build effective fuzzers for different environments from simple in-memory fuzzing setups to more complex use cases like bare-metal targets or embedded systems.
 
-## Structure
+## Fuzzers
 
 Each folder in this repository is a self-contained Rust project (`cargo new`) representing a specific fuzzing scenario:
 
@@ -17,7 +17,7 @@ supports sync_exit, low_level, or breakpoint. This one is pretty cool!
 ## What is LibAFl?
 LibAFl is a fuzzing library written in Rust. LibAfl is kind of like a jack of all trades of fuzzers meaning it is very customizable. Libafl is how I put it like building with legos haha it is pretty cool!:)
 
-## 📦 Requirements
+## Requirements
 
 - Rust (2021 or 2024 edition)
 - `cargo install cargo-binutils` and `rustup component add llvm-tools-preview` for coverage instrumentation (optional)
