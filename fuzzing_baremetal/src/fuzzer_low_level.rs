@@ -100,7 +100,8 @@ pub fn fuzz() {
         
         // Created an observation channel to keep track of execution time
         let time_observer = TimeObserver::new("Time");
-
+        
+        // Qemu config file
         let qemu_config = QemuConfig::builder()
             .machine("mps2-an385")
             .monitor(config::Monitor::Null)
