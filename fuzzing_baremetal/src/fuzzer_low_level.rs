@@ -96,6 +96,16 @@ pub fn fuzz() {
             .snapshot(true)
             .start_cpu(false)
             .build();
+        
+        // Created an observeration channel to watch code coverage
+        let mut edges_observer = unsafe {
+            HitcountsMapObserver::new(VariableMapObserver::from_mut_slice(
+                    "edges", 
+                    OwnedMutSlice::from_raw_parts_mut(edges_map_mut_ptr(), EDGES_MAP_DEFAULT_SIZE), 
+                    &raw mut MAX_EDGES_FOUND,
+            ))
+            .track_indices()
+        };
 
         // emulator_modules here
         let emulator_mods = tuple_list!(
@@ -186,15 +196,6 @@ pub fn fuzz() {
             }
         };
         
-        // Created an observeration channel to watch code coverage
-        let mut edges_observer = unsafe {
-            HitcountsMapObserver::new(VariableMapObserver::from_mut_slice(
-                    "edges", 
-                    OwnedMutSlice::from_raw_parts_mut(edges_map_mut_ptr(), EDGES_MAP_DEFAULT_SIZE), 
-                    &raw mut MAX_EDGES_FOUND,
-            ))
-            .track_indices()
-        };
         
         // Created an observation channel to keep track of execution time
         let time_observer = TimeObserver::new("Time");
