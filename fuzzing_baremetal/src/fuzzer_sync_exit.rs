@@ -76,7 +76,8 @@ pub fn fuzz() {
             )
             .build()
             .expect("Failed to call QEMU emulator");
-
+        
+        // todo: would like to move these print statments into a LOG file instead hmmmm
         let devices = emu.list_devices();
         println!("Devices: {:?}", devices);
 
