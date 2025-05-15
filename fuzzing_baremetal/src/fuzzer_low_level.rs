@@ -11,7 +11,7 @@ use libafl::{
 
 use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
                 shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
-use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, config::{self, QemuConfig}, elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuMemoryChunk};
+use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, config::{self, QemuConfig}, elf::EasyElf, modules::{StdEdgeCoverageModule, StdEdgeCoverageModuleBuilder}, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuExitReason, QemuMemoryChunk};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
@@ -80,13 +80,6 @@ pub fn fuzz() {
         let kernel_dir = env::var("KERNEL").expect("Kernel variable was not set");
         let virtual_disk_dir = env::var("DUMMY_IMG").expect("Dummy_image not set");
 
-        // Harness calling the LLVM-style harness
-        let mut harness = |
-            emulator: &mut Emulator<_,_,_,_,_,_,_,>,
-            state: &mut _,
-            input: &BytesInput| unsafe {
-                emulator.run(state, input).unwrap().try_into().unwrap()
-            };
         
         // Created an observeration channel to watch code coverage
         let mut edges_observer = unsafe {
@@ -116,47 +109,50 @@ pub fn fuzz() {
             .snapshot(true)
             .start_cpu(false)
             .build();
-            
 
-        // Initialize QEMU Emulator
-        let emu = Emulator::builder()
-            .qemu_parameters(args)
-            .prepend_module(
-                StdEdgeCoverageModule::builder()
+        // emulator_modules here
+        let emulator_mods = tuple_list!(
+            StdEdgeCoverageModuleBuilder::default()
                 .map_observer(edges_observer.as_mut())
                 .build()
-                .expect("Failed to intialize coverage map in QEMU"),
-            )
+                .expect("Failed to intialize EdgeObserver module")
+        );
+            
+        // Initialize QEMU Emulator
+        let emu = Emulator::builder()
+            .qemu_parameters(qemu_config)
+            .modules(emulator_mods)
             .build()
             .expect("Failed to call QEMU emulator");
 
+        let qemu = emu.qemu();
+
         // Set the start point for QEMU
-        emu.add_breakpoint(
-            Breakpoint::with_command(
-                main_addr, 
-                StartCommand::new(QemuMemoryChunk::phys(
-                        input_addr, 
-                        unsafe { MAX_INPUT_SIZE } as GuestReg, 
-                        None,
-                ))
-                .into(),
-                true
-            ),
-            true
-        );
+        qemu.set_breakpoint(main_addr); 
         
-        // Set the end point for QEMU
-        emu.add_breakpoint(
-            Breakpoint::with_command(
-                breakpoint_addr, 
-                EndCommand::new(Some(ExitKind::Ok)).into(), 
-                false
-            ), 
-            true
-        );
+        unsafe {
+            match qemu.run() {
+                Ok(QemuExitReason::Breakpoint(_)) => {}
+                _ => panic!("Unexpected QEMU exit."),
+            }
+        }
+        
+        qemu.remove_breakpoint(main_addr);
+        
+        qemu.set_breakpoint(breakpoint_addr);
 
         let devices = emu.list_devices();
         println!("Devices: {:?}", devices);
+
+        let snap = qemu.create_fast_snapshot(true);
+        
+        // Harness calling the LLVM-style harness
+        let mut harness = |
+            emulator: &mut Emulator<_,_,_,_,_,_,_,>,
+            state: &mut _,
+            input: &BytesInput| unsafe {
+                emulator.run(state, input).unwrap().try_into().unwrap()
+            };
 
         // Feedback to rate the interestingness of an input
         // Can eitheir be a slower executions or a new coverage
