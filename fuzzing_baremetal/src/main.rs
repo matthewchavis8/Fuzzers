@@ -16,7 +16,7 @@ pub fn main() {
     fuzzer_breakpoint::fuzz();
    
     #[cfg(feature = "sync_exit")]
-    fuzzer_low_level::fuzz();
+    fuzzer_sync_exit::fuzz();
 }
 
 #[cfg(not(target_os = "linux"))]

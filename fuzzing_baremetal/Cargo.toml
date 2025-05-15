@@ -11,7 +11,7 @@ libafl_qemu = { version = "0.15.2", features = ["arm", "systemmode"], default-fe
 libafl_targets = "0.15.2"
 
 [features]
-default = ["std", "breakpoint"]
+default = ["std", "sync_exit"]
 std = []
 arm = ["libafl_qemu/arm"]
 systemmode = ["libafl_qemu/systemmode"]

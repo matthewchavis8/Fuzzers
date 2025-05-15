@@ -33,14 +33,6 @@ pub fn fuzz() {
     let corpus_dir = [PathBuf::from("./corpus")];
     let crash_dir = PathBuf::from("./crashes");
     
-    // Creates a growable byte buffer that contains the binary of the elf file
-    let mut elf_buffer = Vec::new();
-    let elf = EasyElf::from_file(
-        env::var("KERNEL").expect("KERNEL env not set"),
-        &mut elf_buffer,
-    )
-    .unwrap();
-    
     /*
      * After broker is set up the qemu launcher will invoke to the client process once
      * Basically each processes main function 
@@ -84,31 +76,6 @@ pub fn fuzz() {
             )
             .build()
             .expect("Failed to call QEMU emulator");
-
-        // Set the start point for QEMU
-        emu.add_breakpoint(
-            Breakpoint::with_command(
-                main_addr, 
-                StartCommand::new(QemuMemoryChunk::phys(
-                        input_addr, 
-                        unsafe { MAX_INPUT_SIZE } as GuestReg, 
-                        None,
-                ))
-                .into(),
-                true
-            ),
-            true
-        );
-        
-        // Set the end point for QEMU
-        emu.add_breakpoint(
-            Breakpoint::with_command(
-                breakpoint_addr, 
-                EndCommand::new(Some(ExitKind::Ok)).into(), 
-                false
-            ), 
-            true
-        );
 
         let devices = emu.list_devices();
         println!("Devices: {:?}", devices);
