@@ -2,7 +2,7 @@
 use std::{env, num::NonZero, path::PathBuf, time::Duration};
 use libafl::{
         corpus::{InMemoryCorpus, OnDiskCorpus}, 
-        events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
+        events::{EventConfig, Launcher}, feedback_or, 
         feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, 
         inputs::BytesInput, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
         observers::{CanTrack, HitcountsMapObserver, TimeObserver, VariableMapObserver}, 
@@ -10,12 +10,9 @@ use libafl::{
         state::StdState, Error, Fuzzer, StdFuzzer};
 
 use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
-                shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
-use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, 
-                  elf::EasyElf, modules::StdEdgeCoverageModule, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuMemoryChunk};
+                shmem::{ ShMemProvider, StdShMemProvider}, tuples::tuple_list};
+use libafl_qemu::{modules::StdEdgeCoverageModule, Emulator, QemuExecutor};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
-
-pub static mut MAX_INPUT_SIZE: usize = 50;
 
 pub fn fuzz() {
     /*
