@@ -4,14 +4,14 @@ use libafl::{
         corpus::{InMemoryCorpus, OnDiskCorpus}, 
         events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
         feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, 
-        inputs::BytesInput, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
+        inputs::{BytesInput, HasTargetBytes}, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
         observers::{CanTrack, HitcountsMapObserver, TimeObserver, VariableMapObserver}, 
         schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, 
         state::StdState, Error, Fuzzer, StdFuzzer};
 
 use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
-                shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list};
-use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, config::{self, QemuConfig}, elf::EasyElf, modules::{StdEdgeCoverageModule, StdEdgeCoverageModuleBuilder}, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuExitReason, QemuMemoryChunk};
+                shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list, AsSlice};
+use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, config::{self, QemuConfig}, elf::EasyElf, modules::{StdEdgeCoverageModule, StdEdgeCoverageModuleBuilder}, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuExitError, QemuExitReason, QemuMemoryChunk, QemuRWError, QemuShutdownCause, Regs};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
@@ -134,12 +134,57 @@ pub fn fuzz() {
         let snap = qemu.create_fast_snapshot(true);
         
         // Harness calling the LLVM-style harness
-        let mut harness = |
-            emulator: &mut Emulator<_,_,_,_,_,_,_,>,
-            state: &mut _,
-            input: &BytesInput| unsafe {
-                emulator.run(state, input).unwrap().try_into().unwrap()
-            };
+        let mut harness = 
+          |emulator: &mut Emulator<_,_,_,_,_,_,_,>, _state: &mut _, input: &BytesInput| {
+            let target = input.target_bytes();
+            let mut buf = target.as_slice();
+            let len = buf.len();
+
+            unsafe {
+                if len > MAX_INPUT_SIZE {
+                    buf = &buf[0..MAX_INPUT_SIZE];
+                }
+
+                qemu.write_phys_mem(input_addr, buf);
+                
+                match emulator.qemu().run() {
+                    Ok(QemuExitReason::Breakpoint(_)) => {}
+                    Ok(QemuExitReason::Timeout) => return ExitKind::Timeout,
+                    Ok(QemuExitReason::End(QemuShutdownCause::HostSignal(signal))) => {
+                        signal.handle()
+                    }
+
+                    Err(QemuExitError::UnexpectedExit) => return ExitKind::Crash,
+                    e => panic!("Unexpected QEMU exit: {e:?}"),
+                }
+
+                // If the execution stops at any other point than the designated breakpoint Crash
+                // was found
+                let mut pcs = (0..qemu.num_cpus())
+                    .map(|i| qemu.cpu_from_index(i))
+                    .map(|cpu| -> Result<u32, QemuRWError> { cpu.read_reg(Regs::Pc) });
+
+                let ret = match pcs
+                    .find(|pc| (breakpoint_addr..breakpoint_addr + 5).contains(pc.as_ref().unwrap_or(&0)))
+                {
+                    Some(_) => ExitKind::Ok,
+                    None => ExitKind::Crash
+                };
+
+                // OPTION 1: restore only the CPU state (registers et. al)
+                // for (i, s) in saved_cpu_states.iter().enumerate() {
+                //     emu.cpu_from_index(i).restore_state(s);
+                // }
+
+                // OPTION 2: restore a slow vanilla QEMU snapshot
+                // emu.load_snapshot("start", true);
+
+                // OPTION 3: restore a fast devices+mem snapshot
+                qemu.restore_fast_snapshot(snap);
+
+                ret
+            }
+        };
         
         // Created an observeration channel to watch code coverage
         let mut edges_observer = unsafe {
