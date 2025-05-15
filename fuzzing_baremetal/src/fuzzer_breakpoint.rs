@@ -240,6 +240,4 @@ pub fn fuzz() {
             Err(Error::ShuttingDown) => println!("User stopped fuzzing process"),
             Err(e) => panic!("Failed to run launcher: {e:?}"),
         }
-
-    println!("Successfully BUILT");
 }
