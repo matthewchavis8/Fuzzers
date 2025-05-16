@@ -8,9 +8,9 @@ Each folder in this repository is a Fuzzer representing a specific fuzzing scena
 
 - `baby_fuzzer` – A minimal fuzzer showcasing coverage-guided fuzzing using `InProcessExecutor`, `StdFuzzer`, and basic mutation stages.
 - `baby_fuzzer_with_custom_executor` – A minimal fuzzer showcasing coverage-guided fuzzing using a custom executor and also with a bloom input filter and multiple stages such as calibration stage and AflStats stage.
-- 'fuzzing_c_code_inprocess_executor' A fuzzer with basic coverage guided fuzzing but this time instrumented and calling actual C code
-- 'fuzzing_c_code_with_fork_executor' Same as above but will fork instead of running it in the same process
-- 'fuzzing_baremetal' - A QEMU-based fuzzer that feeds random inputs into a ARM based bare-metal firmware, tracks every code path for coverage, and flags crashes or hangs automatically
+- `fuzzing_c_code_inprocess_executor` A fuzzer with basic coverage guided fuzzing but this time instrumented and calling actual C code
+- `fuzzing_c_code_with_fork_executor` Same as above but will fork instead of running it in the same process
+- `fuzzing_baremetal` - A QEMU-based fuzzer that feeds random inputs into a ARM based bare-metal firmware, tracks every code path for coverage, and flags crashes or hangs automatically
 supports sync_exit, low_level, or breakpoint. This one is pretty cool!
 - *(More coming soon...)*
 
