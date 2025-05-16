@@ -17,7 +17,7 @@ target_dir:
 # Creating a dummy virtual disk Image (32 MB)
 image: target_dir
   @echo "[LOG] Creating the Virtual Disk: {{DUMMY_IMG}}"
-  qemu-img create -f qcow2 {{DUMMY_IMG}} 32M
+  [ -f {{DUMMY_IMG}} ] || qemu-img create -f qcow2 {{DUMMY_IMG}} 32M
 
 # Compiles the ARM kernel
 target flavor: image

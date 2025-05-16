@@ -1,5 +1,5 @@
 #![allow(unused_variables)]
-use std::{env, fmt::format, num::NonZero, path::PathBuf, time::Duration};
+use std::{env, num::NonZero, path::PathBuf, time::Duration};
 use libafl::{
         corpus::{Corpus, InMemoryCorpus, OnDiskCorpus}, 
         events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
@@ -281,17 +281,9 @@ pub fn fuzz() {
     let shmem_provider = StdShMemProvider::new().expect("Failed to init shared memory");
 
     // Stats reporter for the broker
-    #[cfg(not(feature = "tui"))]
     let monitor = MultiMonitor::new(|msg| println!("[LOG] {msg}"));
-    
-    #[cfg(feature = "tui")]
-    let monitor = TuiMonitor::builder()
-        .enhanced_graphics(true)
-        .title("Fuzzing Baremetal ARM with breakpoints")
-        .build();
 
     // Build and run launcher
-    #[cfg(not(feature = "tui"))]
     match Launcher::builder()
         .shmem_provider(shmem_provider)
         .broker_port(broker_port)
@@ -307,22 +299,4 @@ pub fn fuzz() {
             Err(e) => panic!("Failed to run launcher: {e:?}"),
         }
 
-    // if tui is enabled fuzzer output would cover it so moving it to an external file
-    #[cfg(feature = "tui")]
-    match Launcher::builder()
-        .shmem_provider(shmem_provider)
-        .broker_port(broker_port)
-        .configuration(EventConfig::from_build_id())
-        .monitor(monitor)
-        .run_client(&mut run_client)
-        .cores(&cores)
-        .stdout_file(Some("/dev/null"))
-        .stderr_file(Some("/dev/null"))
-        .build()
-        .launch()
-        {
-            Ok(()) => (),
-            Err(Error::ShuttingDown) => println!("User stopped fuzzing process"),
-            Err(e) => panic!("Failed to run launcher: {e:?}"),
-        }
 }
