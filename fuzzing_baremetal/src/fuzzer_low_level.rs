@@ -4,14 +4,16 @@ use libafl::{
         corpus::{Corpus, InMemoryCorpus, OnDiskCorpus}, 
         events::{EventConfig, Launcher}, executors::ExitKind, feedback_or, 
         feedbacks::{CrashFeedback, MaxMapFeedback, TimeFeedback, TimeoutFeedback}, generators::RandPrintablesGenerator, 
-        inputs::{BytesInput, HasTargetBytes}, monitors::{MultiMonitor, TuiMonitor}, mutators::{havoc_mutations, StdScheduledMutator}, 
+        inputs::{BytesInput, HasTargetBytes}, monitors::MultiMonitor, mutators::{havoc_mutations, StdScheduledMutator}, 
         observers::{CanTrack, HitcountsMapObserver, TimeObserver, VariableMapObserver}, 
         schedulers::{IndexesLenTimeMinimizerScheduler, QueueScheduler}, stages::{CalibrationStage, StdMutationalStage}, 
         state::{HasCorpus, StdState}, Error, Fuzzer, StdFuzzer};
 
 use libafl_bolts::{core_affinity::Cores, current_nanos, ownedref::OwnedMutSlice, rands::StdRand, 
                 shmem::{ShMemProvider, StdShMemProvider}, tuples::tuple_list, AsSlice};
-use libafl_qemu::{breakpoint::Breakpoint, command::{EndCommand, StartCommand}, config::{self, QemuConfig}, elf::EasyElf, modules::{StdEdgeCoverageModule, StdEdgeCoverageModuleBuilder}, Emulator, GuestPhysAddr, GuestReg, QemuExecutor, QemuExitError, QemuExitReason, QemuMemoryChunk, QemuRWError, QemuShutdownCause, Regs};
+use libafl_qemu::{config::{self, QemuConfig},
+elf::EasyElf, modules::StdEdgeCoverageModuleBuilder, 
+Emulator, GuestPhysAddr, QemuExecutor, QemuExitError, QemuExitReason, QemuRWError, QemuShutdownCause, Regs};
 use libafl_targets::{edges_map_mut_ptr, EDGES_MAP_DEFAULT_SIZE, MAX_EDGES_FOUND};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
