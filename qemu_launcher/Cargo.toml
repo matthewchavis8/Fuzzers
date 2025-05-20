@@ -9,7 +9,7 @@ std = []
 clippy = []
 
 # Build with simple event manager instead of launcher
-simplemgr= []
+simplemgr = []
 # Enable fuzzing for injections
 injections = []
 
