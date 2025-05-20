@@ -54,7 +54,7 @@ where
                if buff.len() > 2 && buff[2] == b'T' {
                     mark_map(3);
                    if buff.len() > 3 && buff[3] == b'T' {
-                       println!("[LOG]: {}", String::from_utf8_lossy(buff));
+                       // println!("[LOG]: {}", String::from_utf8_lossy(buff));
                         return Ok(ExitKind::Crash)
                     }
                 }

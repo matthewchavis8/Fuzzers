@@ -1,0 +1,22 @@
+# Global variables
+FUZZER_NAME := "qemu_launcher"
+TARGET_DIR  := "target/QemuLauncher"
+BUILD_DIR   := TARGET_DIR + "/build"
+BINARY_DIR  := BUILD_DIR + "/debug"
+PROFILE     := "dev"
+ARCH        := env("ARCH", "x86_64")
+# DOTENV      := source_directory() / "envs" / ".env." + ARCH
+
+target_dir:
+  @echo "[LOG] Creating target directory if it does not exist already at {{ TARGET_DIR }}"
+  mkdir -p {{ TARGET_DIR }}
+
+build: target_dir
+  cargo build                     \
+    --profile {{ PROFILE }}       \
+    --features {{ ARCH }}         \
+    --target-dir {{ TARGET_DIR }} \
+
+
+clean:
+  cargo clean

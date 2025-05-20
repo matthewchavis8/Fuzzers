@@ -3,4 +3,28 @@ name = "qemu_launcher"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["std", "injections"]
+std = []
+clippy = []
+
+# Build with simple event manager instead of launcher
+simplemgr= []
+# Enable fuzzing for injections
+injections = []
+
+[profile.dev]
+opt-level = 0
+debug = true
+codegen-units = 7
+incremental = true
+overflow-checks = true
+
 [dependencies]
+clap = "4.5.38"
+libafl = "0.15.2"
+libafl_bolts = "0.15.2"
+libafl_qemu = "0.15.2"
+libafl_targets = "0.15.2"
+log = "0.4.27"
+nix = "0.30.1"
