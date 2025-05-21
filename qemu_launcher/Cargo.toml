@@ -13,6 +13,14 @@ simplemgr = []
 # Enable fuzzing for injections
 injections = []
 
+arm = []
+x86_64 = []
+i386 = []
+aarch64 = []
+mips = []
+ppc = []
+hexagon = []
+
 [profile.dev]
 opt-level = 0
 debug = true
@@ -28,3 +36,9 @@ libafl_qemu = "0.15.2"
 libafl_targets = "0.15.2"
 log = "0.4.27"
 nix = "0.30.1"
+vergen = "9.0.6"
+vergen-git2 = "1.0.7"
+
+[build-dependencies]
+vergen = { version = "9.0.1", features = ["build", "cargo", "rustc", "si"] }
+vergen-git2 = "1.0.1"
